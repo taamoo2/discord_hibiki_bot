@@ -30,7 +30,7 @@ class HibikiBot
     # Ping
     @bot.command :ping do |event|
       message = event.respond("Pong！")
-      message.edit "Pong！ 応答までに #{Time.now - event.timestamp} 秒かかりました"
+      message.edit "Pong！ 応答までに #{(Time.now - event.timestamp).floor(2)} 秒かかりました"
     end
 
     # dice
@@ -218,7 +218,7 @@ class HibikiBot
 
   def help_message
     message = "`/dice` : サイコロを回すよ。引数があると、それを最大値とするサイコロを回すよ :game_die:\n"
-    message += "`/eval` : 「るびぃ」っていうのを動かせるんだって！1+1とか入れてみてね！:\n"
+    message += "`/eval` : 「るびぃ」っていうのを動かせるんだって！1+1とか入れてみてね！\n"
     message += "`/setgame` : 私がやってるゲームを設定できますよ:\n"
     message += "`/releasegame` : ゲームの設定を外せますよ:\n"
     message += "`/ping` : 「そつうかくにん」？らしいよ\n"
