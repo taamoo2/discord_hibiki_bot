@@ -60,23 +60,23 @@ class HibikiBot
     end
     
     # eval
-    bot.command [:eval, :e], help_available: false do |event, *code|
+    @bot.command [:eval, :e], help_available: false do |event, *code|
       event.respond(eval_message(code))
     end
     
     # set game status
-    bot.command :setgame do |event, game_name|
+    @bot.command :setgame do |event, game_name|
       bot.game = game_name.to_s
       event.send_message("#{game_name}をやるよ！")
     end
     
     # release game status
-    bot.command :releasegame do |event|
+    @bot.command :releasegame do |event|
       bot.game = nil
     end
     
     # notice join voice channel
-    bot.voice_state_update do |event|
+    @bot.voice_state_update do |event|
       return if event.user.bot_account
       event.respond(join_channel_message(event))
     end
