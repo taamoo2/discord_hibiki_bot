@@ -27,25 +27,10 @@ class HibikiBot
   end
 
   def settings
-    # response menthion
-    @bot.mention do |event|
-      mention_users = event.message.mentions
-      message = event.content
-
-      # 不要な文字列を除去
-      message.delete!("\s")
-      mention_users.each do |user|
-        message.slice!("<@#{user.id}>")
-      end
-
-      reply = munou_message(message: message, event: event)
-      event.respond(reply) unless reply.nil?
-    end
-
     # Ping
     @bot.command :ping do |event|
-      m = event.respond("Pong！")
-      m.edit "Pong！ 応答までに #{Time.now - event.timestamp} 秒かかったよ！"
+      message = event.respond("Pong！")
+      message.edit "Pong！ 応答までに #{Time.now - event.timestamp} 秒かかりました"
     end
 
     # dice
@@ -60,25 +45,62 @@ class HibikiBot
     end
     
     # eval
-    @bot.command [:eval, :e], help_available: false do |event, *code|
+    @bot.command(:eval, help_available: false) do |event, *code|
       event.respond(eval_message(code))
     end
     
     # set game status
     @bot.command :setgame do |event, game_name|
-      bot.game = game_name.to_s
-      event.send_message("#{game_name}をやるよ！")
+      @bot.game = game_name.to_s
+      event.respond("#{game_name}をやるよ！")
     end
     
     # release game status
     @bot.command :releasegame do |event|
-      bot.game = nil
+      @bot.game = nil
+      event.respond("今のゲームをやめるよ！")
+    end
+
+    # response menthion
+    @bot.mention do |event|
+      mention_users = event.message.mentions
+      message = event.content
+
+      # 不要な文字列を除去
+      message.delete!("\s")
+      mention_users.each do |user|
+        message.slice!("<@#{user.id}>")
+      end
+
+      reply = mention_message(message: message, event: event)
+      event.respond(reply) unless reply.nil?
     end
     
     # notice join voice channel
     @bot.voice_state_update do |event|
       return if event.user.bot_account
-      event.respond(join_channel_message(event))
+      # get default text channel
+      begin
+        default_text_channel = nil
+        event.server.channels.each do |channel|
+          if channel.type == 0
+            default_text_channel ||= channel.id
+            default_text_channel = channel.id if channel.name == 'general'
+          end
+        end
+        exit unless default_text_channel
+      rescue SystemExit => err
+        puts "[WARN] There is no text channel."
+      end
+
+      # notify only when joining any channel
+      if event.old_channel.nil?
+        text = "#{event.user.name}さんが#{event.channel.name}に入ったよ！"
+      # elsif event.channel.nil?
+      #   text = "#{event.user.name}さんが#{event.old_channel.name}から抜けたよ！"
+      end
+
+      event.bot.send_message(default_text_channel, text)
     end
     
     # join voice channel 
@@ -165,8 +187,8 @@ class HibikiBot
     message
   end
 
-  def eval_message
-    eval code.join(' ') rescue 'それはできないよ！'
+  def eval_message(code)
+    eval code.join(' ') rescue 'そがんこつわからん！'
   end
 
   def join_channel_message(event)
@@ -195,14 +217,19 @@ class HibikiBot
   end
 
   def help_message
-    message += "/dice : サイコロを回すよ。引数があると、それを最大値とするサイコロを回すよ :game_die:\n"
-    message += "/rank : 最近ヒマそうにしてる人を教えてあげるね :kiss_ww:\n"
-    message += "/ping : テスト用だよ\n"
-    message += "/help : これだよ\n"
+    message = "`/dice` : サイコロを回すよ。引数があると、それを最大値とするサイコロを回すよ :game_die:\n"
+    message += "`/eval` : 「るびぃ」っていうのを動かせるんだって！1+1とか入れてみてね！:\n"
+    message += "`/setgame` : 私がやってるゲームを設定できますよ:\n"
+    message += "`/releasegame` : ゲームの設定を外せますよ:\n"
+    message += "`/ping` : 「そつうかくにん」？らしいよ\n"
+    message += "`/rank` : 最近ヒマそうにしてる人を教えてあげるね :kiss_ww:\n"
+    message += "`/help` : これのことです\n"
+    message += "\n"
     message += "アットマークでメンションをくれたら何か反応するかも・・？\n"
+    message += "あとあと、誰かがボイスチャンネルに入ったらお知らせしますよ！"
   end
 
-  def munou_message(message: nil, event: nil)
+  def mention_message(message: nil, event: nil)
     case message
     when /(さいころ|サイコロ)/
       dice_message
