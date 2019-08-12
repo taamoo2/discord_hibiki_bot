@@ -45,7 +45,7 @@ class HibikiBot
     # Ping
     @bot.command :ping do |event|
       m = event.respond("Pong！")
-      m.edit "Pong！ 応答までに #{event.timestamp - Time.now} 秒かかったよ！"
+      m.edit "Pong！ 応答までに #{Time.now - event.timestamp} 秒かかったよ！"
     end
 
     # dice
@@ -78,7 +78,7 @@ class HibikiBot
     # notice join voice channel
     bot.voice_state_update do |event|
       return if event.user.bot_account
-      event.respond(join_channel_message)
+      event.respond(join_channel_message(event))
     end
     
     # join voice channel 
@@ -101,8 +101,7 @@ class HibikiBot
   def dice_message(max: nil)
     max ||= 6 # 指定がなければ6面ダイス
     max = max.to_i.abs
-    val = rand(1..max)
-    "#{max}面サイコロを回したら、「#{val}」が出たよ！"
+    "#{max}面サイコロを回したら、「#{rand(1..max)}」が出たよ！"
   end
 
   def user_rank_message(channel: nil)
@@ -170,7 +169,7 @@ class HibikiBot
     eval code.join(' ') rescue 'それはできないよ！'
   end
 
-  def join_channel_message
+  def join_channel_message(event)
     # get default text channel
     begin
       default_text_channel = nil
