@@ -1,5 +1,5 @@
-require 'discordrb'
-require 'yaml'
+require "discordrb"
+require "yaml"
 require "net/http"
 require "uri"
 require "json"
@@ -7,18 +7,21 @@ require "json"
 class HibikiBot
   attr_accessor :bot
 
-  yaml = YAML.load_file('secret.yml')
-  TOKEN = yaml['token'].freeze
-  CLIENT_ID = yaml['client_id'].freeze
+  yaml = YAML.load_file("secret.yml")
+  TOKEN = yaml["token"].freeze
+  CLIENT_ID = yaml["client_id"].freeze
+
+  HOT_PEPPER_API_HOST = "http://webservice.recruit.co.jp/hotpepper/gourmet/v1".freeze
+  RECRUIT_API_KEY = yaml["recruit_api_key"].freeze
 
   RANK_TOTAL_COUNT = 200 # 発言数集計のために取得する件数
 
   def initialize
-    @bot = Discordrb::Commands::CommandBot.new(token: TOKEN, client_id: CLIENT_ID, prefix: '/')
+    @bot = Discordrb::Commands::CommandBot.new(token: TOKEN, client_id: CLIENT_ID, prefix: "/")
   end
 
   def start
-    puts "This bot's invite URL is #{@bot.invite_url}"
+    puts "This bot"s invite URL is #{@bot.invite_url}"
     puts "Click on it to invite it to your server."
 
     settings
@@ -61,6 +64,21 @@ class HibikiBot
       event.respond("今のゲームをやめるよ！")
     end
 
+    # 料理屋さん検索
+    @bot.command [:gourmet, :gurume, :grm] do |event, address, keyword|
+      event.respond(gourmet_message(address: address, keyword: keyword))
+    end
+
+    @bot.message(contains: /^(おなかすいた|おなすき)/) do |event|
+      if match_data = event.content.match(/^([^、,]+)、([^、,]+)、?(.+)?$/)
+        address = match_data[2]
+        keyword = match_data[3]
+        event.respond(gourmet_message(address: address, keyword: keyword))
+      else
+        event.respond(gourmet_message)
+      end
+    end
+
     # response menthion
     @bot.mention do |event|
       mention_users = event.message.mentions
@@ -85,7 +103,7 @@ class HibikiBot
         event.server.channels.each do |channel|
           if channel.type == 0
             default_text_channel ||= channel.id
-            default_text_channel = channel.id if channel.name == 'general'
+            default_text_channel = channel.id if channel.name == "general"
           end
         end
         exit unless default_text_channel
@@ -106,7 +124,7 @@ class HibikiBot
     # join voice channel 
     # bot.command(:connect) do |event|
     #   channel = event.user.voice_channel
-    #   return 'ボイスチャンネルにいないじゃん！' unless channel
+    #   return "ボイスチャンネルにいないじゃん！" unless channel
     
     #   # The `voice_connect` method does everything necessary for the bot to connect to a voice channel. Afterwards the bot
     #   # will be connected and ready to play stuff back.
@@ -188,38 +206,42 @@ class HibikiBot
   end
 
   def eval_message(code)
-    eval code.join(' ') rescue 'そがんこつわからん！'
+    eval code.join(" ") rescue "そがんこつわからん！"
   end
 
-  def join_channel_message(event)
-    # get default text channel
-    begin
-      default_text_channel = nil
-      event.server.channels.each do |channel|
-        if channel.type == 0
-          default_text_channel ||= channel.id
-          default_text_channel = channel.id if channel.name == 'general'
-        end
-      end
-      exit unless default_text_channel
-    rescue SystemExit => err
-      puts "[WARN] There is no text channel."
-    end
+  def gourmet_message(address: nil, keyword: nil)
+    address ||= "東京駅"
+    keyword.gsub!(/(,|、)/, " ") unless keyword.nil?
+    max_count = 100
 
-    # notify only when joining any channel
-    if event.old_channel.nil?
-      message = "#{event.user.name}さんが#{event.channel.name}に入ったよ！"
-    # elsif event.channel.nil?
-    #   text = "#{event.user.name}さんが#{event.old_channel.name}から抜けたよ！"
-    end
+    query_str  = "key=#{RECRUIT_API_KEY}"
+    query_str += "&address=#{address}"
+    query_str += "&keyword=#{keyword}" unless keyword.nil?
+    query_str += "&count=#{max_count}"
+    query_str += "&format=json"
 
-    message
+    encoded_query = URI.encode(query_str)
+
+    uri = URI.parse("#{HOT_PEPPER_API_HOST}?#{encoded_query}")
+    response = Net::HTTP.get_response(uri)
+    res_json = JSON.parse(response.body)
+
+    shop_list = res_json.dig("results", "shop")
+    return "ごめんね、お店見つけられなかったよ" if shop_list.empty?
+
+    shop_info = shop_list.sample
+
+    message = "#{address}で"
+    message += "#{keyword}を" if keyword
+    message += "探してみたよ！ こことかどう？\n"
+    message += "#{shop_info["mobile_access"]} 『#{shop_info["name"]}』\n"
+    message += shop_info.dig("urls", "pc")
   end
 
   def help_message
     message = "`/dice` : サイコロを回すよ。引数があると、それを最大値とするサイコロを回すよ :game_die:\n"
     message += "`/eval` : 「るびぃ」っていうのを動かせるんだって！1+1とか入れてみてね！\n"
-    message += "`/setgame` : 私がやってるゲームを設定できますよ:\n"
+    message += "`/setgame` : 私がやってるゲームを設定できますよ\n"
     message += "`/releasegame` : ゲームの設定を外せますよ:\n"
     message += "`/ping` : 「そつうかくにん」？らしいよ\n"
     message += "`/rank` : 最近ヒマそうにしてる人を教えてあげるね :kiss_ww:\n"
@@ -260,14 +282,14 @@ class HibikiBot
       ].sample
     when /(おは)/
       [
-        'おはようございます！今日も頑張りましょう！',
-        'おはよう！にぃに！'
+        "おはようございます！今日も頑張りましょう！",
+        "おはよう！にぃに！"
       ].sample
     when /help/
       help_message
     else
       [
-        'ん～？ごめんね、わかんなかったです・・'
+        "ん～？ごめんね、わかんなかったです・・"
       ].sample
     end
   end
