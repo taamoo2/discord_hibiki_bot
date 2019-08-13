@@ -21,7 +21,7 @@ class HibikiBot
   end
 
   def start
-    puts "This bot"s invite URL is #{@bot.invite_url}"
+    puts "This bot's invite URL is #{@bot.invite_url}"
     puts "Click on it to invite it to your server."
 
     settings
