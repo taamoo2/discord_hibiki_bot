@@ -18,6 +18,7 @@ class HibikiBot
 
   def initialize
     @bot = Discordrb::Commands::CommandBot.new(token: TOKEN, client_id: CLIENT_ID, prefix: "/")
+    @notice_voice_state = false
   end
 
   def start
@@ -63,6 +64,17 @@ class HibikiBot
       @bot.game = nil
       event.respond("今のゲームをやめるよ！")
     end
+    
+    #toggle notice voice state
+    @bot.command :setnotice do |event, toggle|
+      if toggle == 'off'
+        @notice_voice_state = false
+        event.respond("チャンネル参加通知をOFFにするね")
+      elsif toggle == 'on'
+        @notice_voice_state = true
+        event.respond("チャンネル参加通知をONにするね")
+      end
+    end
 
     # 料理屋さん検索
     @bot.command [:gourmet, :gurume, :grm] do |event, address, keyword|
@@ -96,6 +108,7 @@ class HibikiBot
     
     # notice join voice channel
     @bot.voice_state_update do |event|
+      return unless @notice_voice_state
       return if event.user.bot_account
       # get default text channel
       begin
